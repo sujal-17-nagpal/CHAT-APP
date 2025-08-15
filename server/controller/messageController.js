@@ -50,17 +50,26 @@ export const markMessageAsSeen = async(req,res)=>{
     try {
         const {id} = req.params;
         await Message.findByIdAndUpdate(id,{seen:true})
-        res.json({succcess:true})
+        res.json({success:true})
     } catch (error) {
         console.log(error)
-        res.json({succcess:false,message:error.message})
+        res.json({success:false,message:error.message})
     }
 }
 
 // send message to selected user
 export const sendMessage = async(req,res)=>{
     try {
-        const {text,image} = req.body
+    // Debug incoming request - headers and body
+    console.log('--- sendMessage headers ---')
+    console.log(req.headers)
+    console.log('--- sendMessage body ---')
+    console.log(req.body)
+
+    // guard against undefined body so destructuring doesn't throw
+    const body = req.body || {}
+    const {text,image} = body
+    console.log('received text:', text)
         const receiverId = req.params.id
         const senderId = req.user._id
 
@@ -78,13 +87,14 @@ export const sendMessage = async(req,res)=>{
         const receiverSocketId = userSocketMap[receiverId]
 
         if(receiverSocketId){
+            console.log(newMessage)
             io.to(receiverSocketId).emit("newMessage",newMessage)
         }
 
-        res.json({succcess:true,newMessage})
+        res.json({success:true,newMessage})
 
     } catch (error) {
         console.log(error)
-        res.json({succcess:false,message:error.message})
+        res.json({success:false,message:error.message})
     } 
 }

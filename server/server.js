@@ -8,7 +8,10 @@ import messageRouter from './routes/messageRoutes.js';
 import { Server } from "socket.io"
 
 const app = express()
+
 const server = http.createServer(app)
+app.use(express.json())
+app.use(cors());
 
 //initialize socket.io server
 export const io = new Server(server,{cors:{origin:"*"}})
@@ -34,8 +37,7 @@ io.on("connection",(socket)=>{
 })
 
 
-app.use(express.json({limit:"4mb"}))
-app.use(cors());
+
  
 app.use('/api/status',(req,res)=>{
     res.send("Server is live")
@@ -48,6 +50,6 @@ await connectDb()
 
 const PORT = process.env.PORT || 5000
 
-app.listen(PORT,()=>{
+server.listen(PORT,()=>{
     console.log(`server in running on port: ${PORT}`)
 })

@@ -1,16 +1,17 @@
-import { genToken } from "../lib/utils";
-import User from "../models/User";
+import { genToken } from "../lib/utils.js";
+import User from "../models/User.js";
 import bcrypt from "bcrypt"
 import cloudinary from "../lib/cloudinary.js";
 
 // sign up new user
 export const signup = async (req, res) => {
   const { fullName, email, password, bio } = req.body;
+
   try {
-    if (!fullName || !email || !password || !body) {
+    if (!fullName || !email || !password || !bio) {
       return res.status(400).json({ message: "all fields are required" });
     }
-    const existingUser = User.findOne({email});
+    const existingUser = await User.findOne({email});
     if (existingUser) {
       return res
         .status(400)
@@ -33,19 +34,24 @@ export const signup = async (req, res) => {
 
 export const login = async(req,res)=>{
     const {email,password} = req.body
+   
     try {
+      
         if(!email || !password){
             return res.status(400).json({message:"all fields are required"})
         }
-        const existingUser = User.findOne({email})
+       
+        const existingUser = await User.findOne({email})
         if(!existingUser){
             return res.status(404).json({message:"no user exists with this email"})
         }
+        
         const hashPass = existingUser.password
-        const comp = bcrypt.compare(password,hashPass)
+        const comp = await bcrypt.compare(password,hashPass)
         if(!comp){
             return res.status(400).json({message:"incorrect password"})
         } 
+        
         const token = genToken(existingUser._id)
         return res.status(200).json({success:true,userData:existingUser,token,message:"login successful"})
     } catch (error) {
@@ -65,11 +71,13 @@ export const checkAuth = (req,res)=>{
 export const updateProfile = async(req,res)=>{
   try{
       const {profilePic,bio,fullName} = req.body
+      
       const userId = req.user._id
       let updatedUser;
       if(!profilePic){
         updatedUser = await User.findByIdAndUpdate(userId,{bio,fullName},{new:true})
       } else {
+     
         const upload = await cloudinary.uploader.upload(profilePic)
 
         updatedUser = await User.findByIdAndUpdate(userId,{profilePic:upload.secure_url,bio,fullName},{new :true})
