@@ -37,8 +37,6 @@ io.on("connection",(socket)=>{
     })
 })
 
-
-
  
 app.use('/api/status',(req,res)=>{
     res.send("Server is live")

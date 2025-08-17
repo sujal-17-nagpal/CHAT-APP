@@ -7,9 +7,20 @@ import { io, userSocketMap } from "../server.js";
 export const getUsersForSidebar = async (req, res) => {
   try {
     const userId = req.user._id;
-    const filteredusers = await User.find({ _id: { $ne: userId } }).select(
-      "-password"
-    );
+    // const filteredusers = await User.find({ _id: { $ne: userId } }).select(
+    //   "-password"
+    // );
+
+    const currUser = await User.findById(userId).select("blockedUsers");
+    const filteredusers = await User.find({
+      _id: {
+        $ne: userId,
+        $nin: currUser.blockedUsers,
+      },
+      blockedUsers: {
+        $ne: userId,
+      },
+    }).select("-password");
 
     // cnt no of messages not seen
     const unseenMessages = {};
@@ -37,6 +48,20 @@ export const getMessages = async (req, res) => {
   try {
     const { id: selectedUserId } = req.params;
     const myId = req.user._id;
+
+    const currUser = await User.findById(myId);
+    const otherUser = await User.findById(selectedUserId);
+
+    if (!currUser || !otherUser) {
+      return res.status(404).json({ message: "user not found" });
+    }
+
+    if (
+      currUser.blockedUsers.includes(selectedUserId) ||
+      otherUser.blockedUsers.includes(myId)
+    ) {
+      return res.status(400).json({ message: "user not found" });
+    }
 
     // Get all messages between the two users
     const messages = await Message.find({
@@ -80,10 +105,10 @@ export const markMessageAsSeen = async (req, res) => {
 export const sendMessage = async (req, res) => {
   try {
     // Debug incoming request - headers and body
-    console.log("--- sendMessage headers ---");
-    console.log(req.headers);
-    console.log("--- sendMessage body ---");
-    console.log(req.body);
+    // console.log("--- sendMessage headers ---");
+    // console.log(req.headers);
+    // console.log("--- sendMessage body ---");
+    // console.log(req.body);
 
     // guard against undefined body so destructuring doesn't throw
     const body = req.body || {};
@@ -91,6 +116,13 @@ export const sendMessage = async (req, res) => {
     console.log("received text:", text);
     const receiverId = req.params.id;
     const senderId = req.user._id;
+
+    const currUser = await User.findById(senderId)
+    const otherUser = await User.findById(receiverId);
+
+    if(currUser.blockedUsers.includes(receiverId) || otherUser.blockedUsers.includes(senderId)){
+      return res.status(404).json({message : "user not found"})
+    }
 
     let imageUrl;
     if (image) {

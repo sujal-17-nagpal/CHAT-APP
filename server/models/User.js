@@ -21,7 +21,11 @@ const UserSchema = new mongoose.Schema({
     },
     bio : {
         type : String,
-    }
+    },
+    blockedUsers: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
 },{timestamps:true})
 
 const User = mongoose.model("User",UserSchema)
