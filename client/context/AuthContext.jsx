@@ -17,8 +17,8 @@ export const AuthProvider = ({ children }) => {
   // check if user is authenticated and if so , set the user data and connect the socket
   const checkAuth = async () => {
     try {
-      const {data} = await axios.get("/api/auth/check");
-    //   console.log(data)
+      const { data } = await axios.get("/api/auth/check");
+      //   console.log(data)
       if (data.success) {
         setAuthUser(data.user);
         connectSocket(data.user);
@@ -33,7 +33,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (state, credentials) => {
     try {
       const { data } = await axios.post(`/api/auth/${state}`, credentials);
-      
+
       if (data.success) {
         setAuthUser(data.userData);
         connectSocket(data.userData);
@@ -51,7 +51,6 @@ export const AuthProvider = ({ children }) => {
 
   //logout function and disconnect socket
   const logout = async () => {
-
     localStorage.removeItem("token");
     setToken(null);
     setAuthUser(null);
@@ -108,6 +107,65 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const checkIfBlocked = async (userId) => {
+    try {
+      const { data } = await axios.get(`/api/auth/checkIfBlocked/${userId}`);
+      return data.isBlocked;
+    } catch (error) {
+      console.log(error);
+      toast.error("error checking blocked status", error.message);
+      return false;
+    }
+  };
+
+  const getAllBlockedUser = async () => {
+    try {
+      const { data } = await axios.get("/api/auth/blocked-users");
+      if (data.success) {
+        return data.blockedUsers;
+      }
+      return [];
+    } catch (error) {
+      console.log(error);
+      toast.error("error fetching blocked user", error.message);
+      return [];
+    }
+  };
+
+  const blockUser = async (userId) => {
+    try {
+      const { data } = await axios.post(`/api/auth/blockUser/${userId}`);
+      if (data.success) {
+        toast.success(data.message || "User blocked successfully");
+        return true;
+      } else {
+        toast.error(data.message || "Failed to block user");
+        return false;
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error(error.response?.data?.message || "Error blocking user");
+      return false;
+    }
+  };
+
+  const unblockUser = async (userId) => {
+    try {
+      const { data } = await axios.post(`/api/auth/unblockUser/${userId}`);
+      if (data.success) {
+        toast.success(data.message || "User unblocked successfully");
+        return true;
+      } else {
+        toast.error(data.message || "Failed to unblock user");
+        return false;
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error(error.response?.data?.message || "Error unblocking user");
+      return false;
+    }
+  };
+
   useEffect(() => {
     if (token) {
       axios.defaults.headers.common["token"] = token;
@@ -123,6 +181,10 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     updateProfile,
+    blockUser,
+    unblockUser,
+    getAllBlockedUser,
+    checkIfBlocked
   };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

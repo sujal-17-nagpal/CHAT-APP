@@ -7,19 +7,10 @@ import { io, userSocketMap } from "../server.js";
 export const getUsersForSidebar = async (req, res) => {
   try {
     const userId = req.user._id;
-    // const filteredusers = await User.find({ _id: { $ne: userId } }).select(
-    //   "-password"
-    // );
-
-    const currUser = await User.findById(userId).select("blockedUsers");
-    const filteredusers = await User.find({
-      _id: {
-        $ne: userId,
-        $nin: currUser.blockedUsers,
-      },
-      blockedUsers: {
-        $ne: userId,
-      },
+    
+    // Simple query to get all users except yourself (no blocking filter)
+    const filteredusers = await User.find({ 
+      _id: { $ne: userId } 
     }).select("-password");
 
     // cnt no of messages not seen
@@ -43,6 +34,7 @@ export const getUsersForSidebar = async (req, res) => {
   }
 };
 
+
 // get all messages for selected user
 export const getMessages = async (req, res) => {
   try {
@@ -56,12 +48,12 @@ export const getMessages = async (req, res) => {
       return res.status(404).json({ message: "user not found" });
     }
 
-    if (
-      currUser.blockedUsers.includes(selectedUserId) ||
-      otherUser.blockedUsers.includes(myId)
-    ) {
-      return res.status(400).json({ message: "user not found" });
-    }
+    // if (
+    //   currUser.blockedUsers.includes(selectedUserId) ||
+    //   otherUser.blockedUsers.includes(myId)
+    // ) {
+    //   return res.status(400).json({ message: "user not found" });
+    // }
 
     // Get all messages between the two users
     const messages = await Message.find({

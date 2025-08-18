@@ -5,23 +5,36 @@ import { AuthContext } from "../context/AuthContext";
 import { Chatcontext } from "../context/ChatContext";
 
 const Sidebar = () => {
-
-  const {getUsers,users,selectedUser,setSelectedUser,unseenMessages,setUnseenMessages,getMessages} = useContext(Chatcontext)
-  const {logout,onlineUsers} = useContext(AuthContext)
-  const [input,setInput] = useState("")
+  const {
+    getUsers,
+    users,
+    selectedUser,
+    setSelectedUser,
+    unseenMessages,
+    setUnseenMessages,
+    getMessages,
+  } = useContext(Chatcontext);
+  const { logout, onlineUsers } = useContext(AuthContext); // Removed blockedUsers access
+  const [input, setInput] = useState("");
 
   const navigate = useNavigate();
 
-  const filtetedUser = input ? users.filter((user)=>user.fullName.toLowerCase().includes(input.toLowerCase())) : users;
+  // Filter only by search input, show all users (no blocking filter)
+  const filteredUser = input
+    ? users.filter((user) =>
+        user.fullName.toLowerCase().includes(input.toLowerCase())
+      )
+    : users;
 
-  useEffect(()=>{
-    getUsers()
-  },[onlineUsers])
+  useEffect(() => {
+    getUsers();
+  }, [onlineUsers]);
 
   return (
     <div
-      className={`bg-[#8185B2]/10 h-full p-5 rounded-r-xl overflow-y-scroll
-text-white ${selectedUser ? "max-md:hidden" : ""}`}
+      className={`bg-[#8185B2]/10 h-full p-5 rounded-r-xl overflow-y-scroll text-white ${
+        selectedUser ? "max-md:hidden" : ""
+      }`}
     >
       <div className="pb-5">
         <div className="flex justify-between items-center">
@@ -44,7 +57,9 @@ group-hover:block"
                 Edit Profile
               </p>
               <hr className="my-2 border-t border-gray-500" />
-              <p onClick={()=>logout()} className="cursor-pointer text-sm">Logout</p>
+              <p onClick={() => logout()} className="cursor-pointer text-sm">
+                Logout
+              </p>
             </div>
           </div>
         </div>
@@ -52,7 +67,7 @@ group-hover:block"
         <div className="bg-[#282142] rounded-full flex items-center gap-2 py-3 px-4 mt-5">
           <img src={assets.search_icon} alt="Search" className="w-3" />
           <input
-            onChange={(e)=>(setInput(e.target.value))}
+            onChange={(e) => setInput(e.target.value)}
             type="text"
             className="bg-transparent border-none outline-none
 text-white text-xs placeholder-[#c8c8c8] flex-1"
@@ -62,18 +77,18 @@ text-white text-xs placeholder-[#c8c8c8] flex-1"
       </div>
 
       <div className="flex flex-col">
-        {filtetedUser.map((user, index) => (
+        {filteredUser.map((user, index) => (
           <div
             onClick={() => {
               // select user, clear unseen count for that user and fetch messages
               setSelectedUser(user);
-              const userIdStr = String(user._id)
+              const userIdStr = String(user._id);
               // make mark-seen call here
-              setUnseenMessages(prev=>({
+              setUnseenMessages((prev) => ({
                 ...prev,
-                [userIdStr]: 0
-              }))
-              getMessages(user._id)
+                [userIdStr]: 0,
+              }));
+              getMessages(user._id);
             }}
             key={index}
             className={`relative flex items-center gap-2 p-2 pl-4
@@ -88,18 +103,18 @@ rounded cursor-pointer max-sm:text-sm ${
             />
             <div className="flex flex-col leading-5">
               <p>{user.fullName}</p>
-        {onlineUsers.includes(String(user._id)) ? (
+              {onlineUsers.includes(String(user._id)) ? (
                 <span className="text-green-400 text-xs">Online</span>
               ) : (
                 <span className="text-neutral-400 text-xs">Offline</span>
               )}
             </div>
-        {unseenMessages && unseenMessages[String(user._id)]>0 && (
+            {unseenMessages && unseenMessages[String(user._id)] > 0 && (
               <p
                 className="absolute top-4 right-4 text-xs h-5 w-5
         flex justify-center items-center rounded-full bg-violet-500/50"
               >
-          {unseenMessages[String(user._id)]}
+                {unseenMessages[String(user._id)]}
               </p>
             )}
           </div>

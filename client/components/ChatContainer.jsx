@@ -8,16 +8,25 @@ import toast from "react-hot-toast";
 const ChatContainer = () => {
   const { messages, selectedUser, setSelectedUser, sendMessage, getMessages } =
     useContext(Chatcontext);
-  const { authUser, onlineUsers } = useContext(AuthContext);
+  const { authUser, onlineUsers, blockUser, unblockUser, checkIfBlocked } =
+    useContext(AuthContext);
 
   const scrollEnd = useRef();
 
   const [input, setInput] = useState("");
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // Handle sending a message
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (input.trim() === "") return null;
+
+    if (isBlocked) {
+      toast.error("You cannot send message to a blocked user.");
+      return;
+    }
+
     await sendMessage({ text: input.trim() });
     setInput("");
   };
@@ -29,6 +38,11 @@ const ChatContainer = () => {
       toast.error("select an image file");
       return;
     }
+
+    if (isBlocked) {
+      toast.error("You cannot send message to a blocked user.");
+      return;
+    }
     const reader = new FileReader();
 
     reader.onloadend = async () => {
@@ -38,9 +52,43 @@ const ChatContainer = () => {
     reader.readAsDataURL(file);
   };
 
+  // Handle block/unblock toggle
+  const toggleBlock = async () => {
+    setLoading(true);
+    try {
+      if (isBlocked) {
+        const success = await unblockUser(selectedUser._id);
+        if (success) {
+          setIsBlocked(false);
+          // Remove duplicate toast - it's already in unblockUser function
+          getUsers(); // Refresh sidebar
+        }
+      } else {
+        const success = await blockUser(selectedUser._id);
+        if (success) {
+          setIsBlocked(true);
+          // Remove duplicate toast - it's already in blockUser function
+          setSelectedUser(null); // Close chat after blocking
+          getUsers(); // Refresh sidebar
+        }
+      }
+    } catch (error) {
+      console.error("Error toggling block:", error);
+    } finally {
+      setLoading(false); // Always clear loading state
+    }
+  };
+
   useEffect(() => {
     if (selectedUser) {
       getMessages(selectedUser._id);
+      async function fetchBlockStatus() {
+        setLoading(true);
+        const blocked = await checkIfBlocked(selectedUser._id);
+        setIsBlocked(blocked);
+        setLoading(false);
+      }
+      fetchBlockStatus();
     }
   }, [selectedUser]);
 
@@ -71,7 +119,19 @@ const ChatContainer = () => {
           alt=""
           className="md:hidden max-w-7"
         />
-        <img src={assets.help_icon} alt="" className="max-md:hidden max-w-5" />
+
+        {/* button to block user  */}
+        <button
+          onClick={toggleBlock}
+          disabled={loading}
+          className={`px-3 py-1 text-sm rounded text-white font-medium transition-colors ${
+            isBlocked
+              ? "bg-green-600 hover:bg-green-700"
+              : "bg-red-600 hover:bg-red-700"
+          } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+        >
+          {loading ? "..." : isBlocked ? "Unblock" : "Block"}
+        </button>
       </div>
 
       {/* chat area */}
@@ -131,15 +191,21 @@ const ChatContainer = () => {
             value={input}
             onKeyDown={(e) => (e.key === "Enter" ? handleSendMessage(e) : null)}
             type="text"
-            placeholder="Send a message"
-            className="flex-1 text-sm p-3 border-none rounded-lg outline-none
-      text-white placeholder-gray-400"
+            placeholder={
+              isBlocked ? "Blocked users can't be contacted" : "Send a message"
+            }
+            className={`flex-1 text-sm p-3 border-none rounded-lg outline-none text-white placeholder-gray-400 ${
+              isBlocked ? "opacity-50 cursor-not-allowed" : ""
+            }`}
+            disabled={isBlocked}
           />
+
           <input
             onChange={handleSendImage}
             type="file"
             id="image"
             accept="image/png, image/jpeg"
+            disabled={isBlocked}
             hidden
           />
           <label htmlFor="image">
@@ -154,7 +220,7 @@ const ChatContainer = () => {
           src={assets.send_button}
           alt=""
           className="w-7 cursor-pointer"
-          onClick={handleSendMessage}
+          onClick={isBlocked ? null : handleSendMessage}
         />
       </div>
     </div>
