@@ -20,6 +20,7 @@ export const getUsersForSidebar = async (req, res) => {
         senderId: user._id,
         receiverId: userId,
         seen: false,
+        canBeSeen: true,
       });
       if (messages.length > 0) {
         unseenMessages[user._id] = messages.length;
@@ -48,28 +49,29 @@ export const getMessages = async (req, res) => {
       return res.status(404).json({ message: "user not found" });
     }
 
-    // if (
-    //   currUser.blockedUsers.includes(selectedUserId) ||
-    //   otherUser.blockedUsers.includes(myId)
-    // ) {
-    //   return res.status(400).json({ message: "user not found" });
-    // }
-
-    // Get all messages between the two users
+    // Get messages with visibility logic
     const messages = await Message.find({
       $or: [
-        { senderId: myId, receiverId: selectedUserId },
-        { senderId: selectedUserId, receiverId: myId },
+        { 
+          senderId: myId, 
+          receiverId: selectedUserId 
+          // Sender can see all their messages (including blocked ones)
+        },
+        { 
+          senderId: selectedUserId, 
+          receiverId: myId,
+          canBeSeen: true  // Receiver only sees messages where canBeSeen is true
+        },
       ],
     });
 
-    // FIXED: Mark messages from the OTHER user to ME as seen
-    // (not my messages to them)
+    // Mark messages as seen (only if canBeSeen is true)
     await Message.updateMany(
       {
-        senderId: selectedUserId, // Messages FROM the other user
-        receiverId: myId, // TO me
-        seen: false, // Only update unseen messages
+        senderId: selectedUserId,
+        receiverId: myId,
+        seen: false,
+        canBeSeen: true,
       },
       { $set: { seen: true } }
     );
@@ -80,6 +82,7 @@ export const getMessages = async (req, res) => {
     res.json({ success: false, message: error.message });
   }
 };
+
 
 //api to mark message as seen using message id
 export const markMessageAsSeen = async (req, res) => {
@@ -96,24 +99,16 @@ export const markMessageAsSeen = async (req, res) => {
 // send message to selected user
 export const sendMessage = async (req, res) => {
   try {
-    // Debug incoming request - headers and body
-    // console.log("--- sendMessage headers ---");
-    // console.log(req.headers);
-    // console.log("--- sendMessage body ---");
-    // console.log(req.body);
-
-    // guard against undefined body so destructuring doesn't throw
     const body = req.body || {};
     const { text, image } = body;
-    console.log("received text:", text);
     const receiverId = req.params.id;
     const senderId = req.user._id;
 
-    const currUser = await User.findById(senderId)
+    const currUser = await User.findById(senderId);
     const otherUser = await User.findById(receiverId);
 
-    if(currUser.blockedUsers.includes(receiverId) || otherUser.blockedUsers.includes(senderId)){
-      return res.status(404).json({message : "user not found"})
+    if (!currUser || !otherUser) {
+      return res.status(404).json({ success: false, message: "user not found" });
     }
 
     let imageUrl;
@@ -122,19 +117,23 @@ export const sendMessage = async (req, res) => {
       imageUrl = uploadResponse.secure_url;
     }
 
+    // Check if receiver has blocked sender
+    const isBlocked = otherUser.blockedUsers.includes(senderId);
+
     const newMessage = await Message.create({
       senderId,
       receiverId,
       text,
       image: imageUrl,
+      canBeSeen: !isBlocked,  // Set to false if receiver blocked sender
     });
 
-    // emit new message to the receiver's socket
-    const receiverSocketId = userSocketMap[receiverId];
-
-    if (receiverSocketId) {
-      console.log(newMessage);
-      io.to(receiverSocketId).emit("newMessage", newMessage);
+    // Only emit to receiver if not blocked
+    if (!isBlocked) {
+      const receiverSocketId = userSocketMap[receiverId];
+      if (receiverSocketId) {
+        io.to(receiverSocketId).emit("newMessage", newMessage);
+      }
     }
 
     res.json({ success: true, newMessage });
@@ -143,3 +142,4 @@ export const sendMessage = async (req, res) => {
     res.json({ success: false, message: error.message });
   }
 };
+

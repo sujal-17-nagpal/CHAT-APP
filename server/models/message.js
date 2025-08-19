@@ -20,7 +20,11 @@ const messageSchema = new mongoose.Schema({
     },
     image:{
         type:String
-    }
+    },
+    canBeSeen: {
+      type: Boolean,
+      default: true,  
+    },
 },{timestamps:true})
 
 const Message = mongoose.model("Message",messageSchema)
