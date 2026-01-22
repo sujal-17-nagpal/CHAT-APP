@@ -2,6 +2,12 @@ import Message from "../models/message.js";
 import User from "../models/User.js";
 import cloudinary from "../lib/cloudinary.js";
 import { io, userSocketMap } from "../server.js";
+import Trie from "../lib/Trie.js";
+import { abusiveWords } from "../lib/abusiveWords.js";
+
+// Initialize Trie with abusive words
+const trie = new Trie();
+abusiveWords.forEach((word) => trie.insert(word));
 
 // get all users except logged in user
 export const getUsersForSidebar = async (req, res) => {
@@ -100,7 +106,7 @@ export const markMessageAsSeen = async (req, res) => {
 export const sendMessage = async (req, res) => {
   try {
     const body = req.body || {};
-    const { text, image } = body;
+    let { text, image } = body;
     const receiverId = req.params.id;
     const senderId = req.user._id;
 
@@ -115,6 +121,11 @@ export const sendMessage = async (req, res) => {
     if (image) {
       const uploadResponse = await cloudinary.uploader.upload(image);
       imageUrl = uploadResponse.secure_url;
+    }
+
+    // Mask abusive words in text before saving
+    if (text) {
+      text = trie.maskAbuses(text);
     }
 
     // Check if receiver has blocked sender

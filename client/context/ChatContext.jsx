@@ -2,13 +2,6 @@ import { children, createContext, useContext, useEffect, useState } from "react"
 import { AuthContext } from "./AuthContext";
 import toast from "react-hot-toast";
 
-import Trie from "../Trie";
-const trie = new Trie()
-
-import { abusiveWords } from "../abusiveWords";
-
-abusiveWords.forEach((word)=>trie.insert(word))
-
 export const Chatcontext = createContext()
 
 export const ChatProvider = ({children})=>{
@@ -50,8 +43,6 @@ export const ChatProvider = ({children})=>{
     //send message to selected user
     const sendMessage = async(messageData)=>{
         try {
-            messageData.text = trie.maskAbuses(messageData.text)
-            // console.log(messageData)
             const {data} = await axios.post(`/api/messages/send/${selectedUser._id}`,messageData)
             // console.log(data.success)
             // console.log(data)
