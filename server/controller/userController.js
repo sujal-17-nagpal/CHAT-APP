@@ -3,6 +3,9 @@ import User from "../models/User.js";
 import bcrypt from "bcrypt";
 import cloudinary from "../lib/cloudinary.js";
 
+import bloomFilter from "../lib/bloomFilter.js";
+const bloom = new bloomFilter(20000);
+
 // sign up new user
 export const signup = async (req, res) => {
   const { fullName, email, password, bio } = req.body;
@@ -11,12 +14,21 @@ export const signup = async (req, res) => {
     if (!fullName || !email || !password || !bio) {
       return res.status(400).json({ message: "all fields are required" });
     }
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res
-        .status(400)
-        .json({ message: "user with this email already exist" });
-    }
+
+    // check using bloom filter if the user exists
+    const flag = bloom.exists(email);
+    if (flag) {
+      // user can exist or not exist (happens due to false positivity )
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+        return res
+          .status(400)
+          .json({ message: "user with this email already exist" });
+      }
+    } 
+
+    // this is the else case (case when bloom filter returned false)
+    // user does not exist
     const hashPass = await bcrypt.hash(password, 10);
     const newUser = await User.create({
       fullName,
@@ -25,7 +37,7 @@ export const signup = async (req, res) => {
       bio,
     });
     const token = genToken(newUser._id);
-
+    bloom.add(email)
     return res.json({
       success: true,
       userData: newUser,
@@ -62,14 +74,12 @@ export const login = async (req, res) => {
     }
 
     const token = genToken(existingUser._id);
-    return res
-      .status(200)
-      .json({
-        success: true,
-        userData: existingUser,
-        token,
-        message: "login successful",
-      });
+    return res.status(200).json({
+      success: true,
+      userData: existingUser,
+      token,
+      message: "login successful",
+    });
   } catch (error) {
     console.log(error.message);
     return res.status(400).json({ message: error.message });
@@ -94,7 +104,7 @@ export const updateProfile = async (req, res) => {
       updatedUser = await User.findByIdAndUpdate(
         userId,
         { bio, fullName },
-        { new: true }
+        { new: true },
       );
     } else {
       const upload = await cloudinary.uploader.upload(profilePic);
@@ -102,7 +112,7 @@ export const updateProfile = async (req, res) => {
       updatedUser = await User.findByIdAndUpdate(
         userId,
         { profilePic: upload.secure_url, bio, fullName },
-        { new: true }
+        { new: true },
       );
     }
     res.status(200).json({ success: true, user: updatedUser });
@@ -170,51 +180,52 @@ export const unblockUser = async (req, res) => {
 
     res.status(200).json({ success: true, message: "user unblocked" });
   } catch (error) {
-    console.log(error.message)
-    res.status(400).json({message:error.message})
+    console.log(error.message);
+    res.status(400).json({ message: error.message });
   }
 };
- 
+
 // get all blocked users data by a user
-export const getBlockedUsers = async(req,res)=>{
+export const getBlockedUsers = async (req, res) => {
   try {
     const userId = req.user._id;
     const user = await User.findById(userId);
-    if(!user){
-      return res.status(400).json({message:"user not found"})
+    if (!user) {
+      return res.status(400).json({ message: "user not found" });
     }
 
-    const blockedUserInfo = await User.find({
-      _id:{$in : user.blockedUsers}},
-      'fullName email profilePic'
-    )
-    res.status(200).json({success:true,blockedUsers : blockedUserInfo})
+    const blockedUserInfo = await User.find(
+      {
+        _id: { $in: user.blockedUsers },
+      },
+      "fullName email profilePic",
+    );
+    res.status(200).json({ success: true, blockedUsers: blockedUserInfo });
   } catch (error) {
-    console.log(error)
-    res.status(500).json({message:error.message})
+    console.log(error);
+    res.status(500).json({ message: error.message });
   }
-}
-
+};
 
 //check if user is blocked
 
-export const checkIfBlocked = async(req,res)=>{
+export const checkIfBlocked = async (req, res) => {
   try {
     const userId = req.user._id;
     const otherUserId = req.params.id;
 
     const user = await User.findById(userId);
-    if(!user){
-      return res.status(404).json({message:"user not found"})
+    if (!user) {
+      return res.status(404).json({ message: "user not found" });
     }
 
-    if(user.blockedUsers.includes(otherUserId)){
-      res.status(200).json({isBlocked:true})
+    if (user.blockedUsers.includes(otherUserId)) {
+      res.status(200).json({ isBlocked: true });
     } else {
-      res.status(200).json({isBlocked:false})
+      res.status(200).json({ isBlocked: false });
     }
   } catch (error) {
-    console.log(error.message)
-    res.status(500).json({message:error.message})
+    console.log(error.message);
+    res.status(500).json({ message: error.message });
   }
-}
+};
