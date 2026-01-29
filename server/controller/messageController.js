@@ -4,6 +4,8 @@ import cloudinary from "../lib/cloudinary.js";
 import { io, userSocketMap } from "../server.js";
 import Trie from "../lib/Trie.js";
 import { abusiveWords } from "../lib/abusiveWords.js";
+import { cacheGet, cacheSet, cacheDel, cacheDelPattern } from "../lib/cache.js";
+
 
 // Initialize Trie with abusive words
 const trie = new Trie();
@@ -13,6 +15,14 @@ abusiveWords.forEach((word) => trie.insert(word));
 export const getUsersForSidebar = async (req, res) => {
   try {
     const userId = req.user._id;
+    const cacheKey = `users:sidebar:${userId}`;
+
+    // checking if data is in cache
+    const cachedData = cacheGet(cacheKey);
+    if(cachedData){
+      return res.json(cachedData);
+    }
+
     
     // Simple query to get all users except yourself (no blocking filter)
     const filteredusers = await User.find({ 
@@ -34,7 +44,11 @@ export const getUsersForSidebar = async (req, res) => {
     });
 
     await Promise.all(promises);
-    res.json({ success: true, users: filteredusers, unseenMessages });
+    const response = { success: true, users: filteredusers, unseenMessages };
+
+    // store data in cache
+    cacheSet(cacheKey,response,300)
+    res.json(response);
   } catch (error) {
     console.log(error.message);
     res.json({ success: false, message: error.message });
@@ -47,6 +61,13 @@ export const getMessages = async (req, res) => {
   try {
     const { id: selectedUserId } = req.params;
     const myId = req.user._id;
+    const cacheKey = `messages:${myId}:${selectedUserId}`;
+    
+    // check the cache first
+    const cachedMessages = cacheGet(cacheKey);
+    if (cachedMessages) {
+      return res.json(cachedMessages);
+    }
 
     const currUser = await User.findById(myId);
     const otherUser = await User.findById(selectedUserId);
@@ -82,7 +103,11 @@ export const getMessages = async (req, res) => {
       { $set: { seen: true } }
     );
 
-    res.json({ success: true, messages });
+    // store in cache
+    const response = { success: true, messages }
+    cacheSet(cacheKey,response,900);
+
+    res.json(response);
   } catch (error) {
     console.log(error.message);
     res.json({ success: false, message: error.message });
@@ -95,6 +120,16 @@ export const markMessageAsSeen = async (req, res) => {
   try {
     const { id } = req.params;
     await Message.findByIdAndUpdate(id, { seen: true });
+    // Invalidate related caches: message threads and sidebars
+    const msg = await Message.findById(id);
+    if (msg) {
+      const a = `${msg.senderId}:${msg.receiverId}`;
+      const b = `${msg.receiverId}:${msg.senderId}`;
+      cacheDel(`messages:${a}`);
+      cacheDel(`messages:${b}`);
+      cacheDelPattern(`users:sidebar:${msg.receiverId}`);
+      cacheDelPattern(`users:sidebar:${msg.senderId}`);
+    }
     res.json({ success: true });
   } catch (error) {
     console.log(error);
@@ -138,6 +173,12 @@ export const sendMessage = async (req, res) => {
       image: imageUrl,
       canBeSeen: !isBlocked,  // Set to false if receiver blocked sender
     });
+
+    // invalidate caches for both participants
+    cacheDel(`messages:${senderId}:${receiverId}`);
+    cacheDel(`messages:${receiverId}:${senderId}`);
+    cacheDelPattern(`users:sidebar:${receiverId}`);
+    cacheDelPattern(`users:sidebar:${senderId}`);
 
     // Only emit to receiver if not blocked
     if (!isBlocked) {
