@@ -11,7 +11,7 @@ const bloom = new bloomFilter(20000);
 // sign up new user
 export const signup = async (req, res) => {
   const { fullName, email, password, bio } = req.body;
-
+  // console.log("chala")
   try {
     if (!fullName || !email || !password || !bio) {
       return res.status(400).json({ message: "all fields are required" });
@@ -29,9 +29,9 @@ export const signup = async (req, res) => {
       }
     } 
 
-    if(password.length < 6){
-      return res.status(400).json({message : "password length must be at least 6 charcters"})
-    }
+    // if(password.length < 6){
+    //   return res.status(400).json({message : "password length must be at least 6 charcters"})
+    // }
 
     // this is the else case (case when bloom filter returned false)
     // user does not exist
