@@ -6,12 +6,13 @@ import { cacheGet, cacheSet, cacheDel, cacheDelPattern } from "../lib/cache.js";
 
 // bloom filter for last looks of users
 import bloomFilter from "../lib/bloomFilter.js";
+import tokenBlackListModel from "../models/tokenBlacklist.js";
 const bloom = new bloomFilter(20000);
 
 // sign up new user
 export const signup = async (req, res) => {
   const { fullName, email, password, bio } = req.body;
-  // console.log("chala")
+  
   try {
     if (!fullName || !email || !password || !bio) {
       return res.status(400).json({ message: "all fields are required" });
@@ -253,5 +254,20 @@ export const checkIfBlocked = async (req, res) => {
   } catch (error) {
     console.log(error.message);
     res.status(500).json({ message: error.message });
+  }
+};
+
+export const logout = async (req, res) => {
+  const token = req.headers.token;
+
+  if (!token) {
+    return res.status(400).json({ message: "you are already logged out" });
+  }
+
+  try {
+    await tokenBlackListModel.create({ token });
+    return res.status(200).json({ message: "logged out" });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
   }
 };

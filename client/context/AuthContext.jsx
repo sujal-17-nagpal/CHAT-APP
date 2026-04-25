@@ -18,18 +18,20 @@ export const AuthProvider = ({ children }) => {
   const checkAuth = async () => {
     try {
       const { data } = await axios.get("/api/auth/check");
-      //   console.log(data)
+        console.log(data)
       if (data.success) {
         setAuthUser(data.user);
         connectSocket(data.user);
       }
     } catch (error) {
-      toast.error(error.message);
+      console.log(error.response?.data?.message || error.message);
+      toast.error(error.response?.data?.message || error.message);
     }
   };
 
   //Login function to handle user authentication and socket connection
 
+  // login/signUp based on the state
   const login = async (state, credentials) => {
     try {
       const { data } = await axios.post(`/api/auth/${state}`, credentials);
@@ -45,19 +47,28 @@ export const AuthProvider = ({ children }) => {
         toast.error(data.message);
       }
     } catch (error) {
-      toast.error(error.message);
+      toast.error(error.response?.data?.message || error.message);
     }
   };
 
   //logout function and disconnect socket
   const logout = async () => {
-    localStorage.removeItem("token");
-    setToken(null);
-    setAuthUser(null);
-    setOnlineUsers([]);
-    axios.defaults.headers.common["token"] = null;
-    toast.success("logged out successfully");
-    socket.disconnect();
+    try {
+      const { data } = await axios.get("/api/auth/log-out")
+
+      localStorage.removeItem("token");
+      setToken(null);
+      setAuthUser(null);
+      setOnlineUsers([]);
+      axios.defaults.headers.common["token"] = null;
+      toast.success(data.message);
+      if (socket) {
+        socket.disconnect();
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message);
+    }
+
   };
 
   //update profile function
@@ -69,7 +80,7 @@ export const AuthProvider = ({ children }) => {
         toast.success("profile upadted successfully");
       }
     } catch (error) {
-      toast.error(error.message);
+      toast.error(error.response?.data?.message || error.message);
     }
   };
 
@@ -113,7 +124,7 @@ export const AuthProvider = ({ children }) => {
       return data.isBlocked;
     } catch (error) {
       console.log(error);
-      toast.error("error checking blocked status", error.message);
+      toast.error(error.response?.data?.message || "error checking blocked status");
       return false;
     }
   };
@@ -127,7 +138,7 @@ export const AuthProvider = ({ children }) => {
       return [];
     } catch (error) {
       console.log(error);
-      toast.error("error fetching blocked user", error.message);
+      toast.error(error.response?.data?.message || "error fetching blocked user");
       return [];
     }
   };
