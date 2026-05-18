@@ -38,10 +38,10 @@ export const AuthProvider = ({ children }) => {
 
       if (data.success) {
         setAuthUser(data.userData);
-        connectSocket(data.userData);
         axios.defaults.headers.common["token"] = data.token;
         setToken(data.token);
         localStorage.setItem("token", data.token);
+        connectSocket(data.userData);
         toast.success(data.message);
       } else {
         toast.error(data.message);
@@ -95,9 +95,9 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const newSocket = io(backendUrl, {
-        query: {
-          userId: userData._id,
-        },
+        auth: {
+          token: localStorage.getItem("token")
+        }
       });
 
       newSocket.on("connect", () => {

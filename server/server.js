@@ -6,6 +6,7 @@ import { connectDb } from "./lib/db.js";
 import userRouter from "./routes/userRoutes.js";
 import messageRouter from "./routes/messageRoutes.js";
 import { Server } from "socket.io";
+import jwt from "jsonwebtoken";
 
 const app = express();
 
@@ -20,9 +21,24 @@ export const io = new Server(server, { cors: { origin: "*" } });
 //store online users
 export const userSocketMap = {}; // {userId : socketId}
 
+// Socket.io authentication middleware
+io.use((socket, next) => {
+  try {
+    const token = socket.handshake.auth.token;
+    if (!token) {
+      return next(new Error("Authentication error"));
+    }
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    socket.userId = decoded.userId;
+    next();
+  } catch (error) {
+    return next(new Error("Authentication error"));
+  }
+});
+
 // Socket.io connection handler
 io.on("connection", (socket) => {
-  const userId = socket.handshake.query.userId;
+  const userId = socket.userId;
   console.log("User Connected", userId);
 
   if (userId) userSocketMap[userId] = socket.id;
