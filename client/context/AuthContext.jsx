@@ -54,7 +54,7 @@ export const AuthProvider = ({ children }) => {
   //logout function and disconnect socket
   const logout = async () => {
     try {
-      const { data } = await axios.get("/api/auth/log-out")
+      const { data } = await axios.post("/api/auth/log-out")
 
       localStorage.removeItem("token");
       setToken(null);

@@ -14,6 +14,6 @@ userRouter.post('/unblockUser/:id',protectRoute,unblockUser)
 userRouter.get('/blocked-users',protectRoute,getBlockedUsers)
 userRouter.get('/checkIfBlocked/:id',protectRoute,checkIfBlocked)
 
-userRouter.get('/log-out',logout)
+userRouter.post('/log-out',logout)
 
 export default userRouter
