@@ -8,7 +8,7 @@ import toast from "react-hot-toast";
 const ChatContainer = () => {
   const { messages, selectedUser, setSelectedUser, sendMessage, getMessages, getUsers } =
     useContext(Chatcontext);
-  const { authUser, onlineUsers, blockUser, unblockUser, checkIfBlocked } =
+  const { authUser, blockUser, unblockUser, checkIfBlocked, axios } =
     useContext(AuthContext);
 
   const scrollEnd = useRef();
@@ -16,6 +16,7 @@ const ChatContainer = () => {
   const [input, setInput] = useState("");
   const [isBlocked, setIsBlocked] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isOnline, setIsOnline] = useState(false);
 
   // Handle sending a message
   const handleSendMessage = async (e) => {
@@ -80,11 +81,25 @@ const ChatContainer = () => {
   useEffect(() => {
     if (selectedUser) {
       getMessages(selectedUser._id);
+
       async function fetchBlockStatus() {
         const blocked = await checkIfBlocked(selectedUser._id);
         setIsBlocked(blocked);
       }
       fetchBlockStatus();
+
+      // Lazy online check — one REST call, zero socket events
+      async function fetchOnlineStatus() {
+        try {
+          const { data } = await axios.get(`/api/auth/online/${selectedUser._id}`);
+          if (data.success) setIsOnline(data.isOnline);
+        } catch (e) {
+          setIsOnline(false);
+        }
+      }
+      fetchOnlineStatus();
+    } else {
+      setIsOnline(false);
     }
   }, [selectedUser]);
 
@@ -98,17 +113,23 @@ const ChatContainer = () => {
     <div className="h-full overflow-scroll relative backdrop-blur-lg">
       {/* header section */}
       <div className="flex items-center gap-3 py-3 mx-4 border-b border-stone-500">
-        <img
-          src={selectedUser.profilePic || assets.avatar_icon}
-          alt=""
-          className="w-8 rounded-full"
-        />
-        <p className="flex-1 text-lg text-white flex items-center gap-2">
-          {selectedUser.fullName}
-          {onlineUsers.includes(selectedUser._id) && (
-            <span className="w-2 h-2 rounded-full bg-green-500"></span>
+        {/* avatar with green dot */}
+        <div className="relative">
+          <img
+            src={selectedUser.profilePic || assets.avatar_icon}
+            alt=""
+            className="w-8 rounded-full"
+          />
+          {isOnline && (
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#1c1c2e]" />
           )}
-        </p>
+        </div>
+        <div className="flex-1">
+          <p className="text-lg text-white leading-tight">{selectedUser.fullName}</p>
+          <p className="text-xs leading-tight" style={{ color: isOnline ? '#4ade80' : '#9ca3af' }}>
+            {isOnline ? 'Online' : 'Offline'}
+          </p>
+        </div>
         <img
           onClick={() => setSelectedUser(null)}
           src={assets.arrow_icon}

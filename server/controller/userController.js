@@ -3,6 +3,7 @@ import User from "../models/User.js";
 import bcrypt from "bcrypt";
 import cloudinary from "../lib/cloudinary.js";
 import { cacheGet, cacheSet, cacheDel, cacheDelPattern } from "../lib/cache.js";
+import { userSocketMap } from "../server.js";
 
 // bloom filter for last looks of users
 import bloomFilter from "../lib/bloomFilter.js";
@@ -269,5 +270,17 @@ export const logout = async (req, res) => {
     return res.status(200).json({ message: "logged out" });
   } catch (error) {
     return res.status(500).json({ message: error.message });
+  }
+};
+
+// check if a specific user is currently online (no socket events emitted)
+export const checkOnlineStatus = (req, res) => {
+  try {
+    const { userId } = req.params;
+    const isOnline = userSocketMap[userId] !== undefined;
+    res.json({ success: true, isOnline });
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).json({ success: false, message: error.message });
   }
 };

@@ -1,5 +1,5 @@
 import express from 'express'
-import { blockUser, checkAuth, checkIfBlocked, getBlockedUsers,logout, login, signup, unblockUser, updateProfile } from '../controller/userController.js'
+import { blockUser, checkAuth, checkIfBlocked, getBlockedUsers, logout, login, signup, unblockUser, updateProfile, checkOnlineStatus } from '../controller/userController.js'
 import { protectRoute } from '../middleware/auth.js'
 
 const userRouter = express.Router()
@@ -13,6 +13,7 @@ userRouter.post('/blockUser/:id',protectRoute,blockUser)
 userRouter.post('/unblockUser/:id',protectRoute,unblockUser)
 userRouter.get('/blocked-users',protectRoute,getBlockedUsers)
 userRouter.get('/checkIfBlocked/:id',protectRoute,checkIfBlocked)
+userRouter.get('/online/:userId',protectRoute,checkOnlineStatus)
 
 userRouter.post('/log-out',logout)
 

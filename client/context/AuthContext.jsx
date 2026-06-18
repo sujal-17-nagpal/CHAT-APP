@@ -11,7 +11,6 @@ export const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem("token"));
   const [authUser, setAuthUser] = useState(null);
-  const [onlineUsers, setOnlineUsers] = useState([]);
   const [socket, setSocket] = useState(null);
 
   // check if user is authenticated and if so , set the user data and connect the socket
@@ -59,7 +58,6 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem("token");
       setToken(null);
       setAuthUser(null);
-      setOnlineUsers([]);
       axios.defaults.headers.common["token"] = null;
       toast.success(data.message);
       if (socket) {
@@ -108,9 +106,6 @@ export const AuthProvider = ({ children }) => {
         console.log("Socket connection error:", error);
       });
 
-      newSocket.on("getOnlineUsers", (userIds) => {
-        setOnlineUsers(userIds);
-      });
 
       setSocket(newSocket);
     } catch (error) {
@@ -187,7 +182,6 @@ export const AuthProvider = ({ children }) => {
   const value = {
     axios,
     authUser,
-    onlineUsers,
     socket,
     login,
     logout,

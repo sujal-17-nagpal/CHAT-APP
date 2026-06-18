@@ -14,7 +14,7 @@ const Sidebar = () => {
     setUnseenMessages,
     getMessages,
   } = useContext(Chatcontext);
-  const { logout, onlineUsers } = useContext(AuthContext); // Removed blockedUsers access
+  const { logout } = useContext(AuthContext);
   const [input, setInput] = useState("");
 
   const navigate = useNavigate();
@@ -28,7 +28,7 @@ const Sidebar = () => {
 
   useEffect(() => {
     getUsers();
-  }, [onlineUsers]);
+  }, []);
 
   return (
     <div
@@ -103,11 +103,7 @@ rounded cursor-pointer max-sm:text-sm ${
             />
             <div className="flex flex-col leading-5">
               <p>{user.fullName}</p>
-              {onlineUsers.includes(String(user._id)) ? (
-                <span className="text-green-400 text-xs">Online</span>
-              ) : (
-                <span className="text-neutral-400 text-xs">Offline</span>
-              )}
+
             </div>
             {unseenMessages && unseenMessages[String(user._id)] > 0 && (
               <p
