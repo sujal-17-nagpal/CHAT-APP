@@ -1,9 +1,14 @@
 import mongoose from "mongoose"
 
 const tokenBlackListSchema = new mongoose.Schema({
-    token:{
-        type:String,
-        required:[true,"token is required"]
+    token: {
+        type: String,
+        required: [true, "token is required"]
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now,
+        expires: "7d" 
     }
 })
 
