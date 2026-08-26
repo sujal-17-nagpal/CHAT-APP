@@ -64,10 +64,14 @@ export const login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
+    
     if (!email || !password) {
       return res.status(400).json({ message: "all fields are required" });
     }
-
+    const flag = bloom.exists(email);
+    if(!flag){
+      return res.status(404).json({message : "no user exists with this email"})
+    }
     const existingUser = await User.findOne({ email });
     if (!existingUser) {
       return res
