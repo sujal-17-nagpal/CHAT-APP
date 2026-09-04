@@ -101,10 +101,6 @@ export const login = async (req, res) => {
 //controller to check if user is authenticated
 
 export const checkAuth = (req, res) => {
-  const cacheKey = `auth:${req.user._id}`;
-  
-  // Store in cache for 10 minutes
-  cacheSet(cacheKey, req.user, 600);
   
   res.json({ success: true, user: req.user });
 };
@@ -134,7 +130,7 @@ export const updateProfile = async (req, res) => {
     }
 
     // After successful update, add:
-    cacheDel(`auth:${req.user._id}`);
+    
     cacheDelPattern(`users:sidebar:`);
 
     res.status(200).json({ success: true, user: updatedUser });
@@ -170,7 +166,6 @@ export const blockUser = async (req, res) => {
     // invalidate caches for both users
     cacheDelPattern(`users:sidebar:${userId}`);
     cacheDelPattern(`users:sidebar:${userTobeBlockedId}`);
-    cacheDel(`auth:${userId}`);
 
     res
       .status(200)
@@ -208,7 +203,7 @@ export const unblockUser = async (req, res) => {
     // invalidate caches for both users
     cacheDelPattern(`users:sidebar:${userId}`);
     cacheDelPattern(`users:sidebar:${userToBeUnblockedId}`);
-    cacheDel(`auth:${userId}`);
+ 
 
     res.status(200).json({ success: true, message: "user unblocked" });
   } catch (error) {
