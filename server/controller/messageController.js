@@ -61,13 +61,6 @@ export const getMessages = async (req, res) => {
   try {
     const { id: selectedUserId } = req.params;
     const myId = req.user._id;
-    const cacheKey = `messages:${myId}:${selectedUserId}`;
-    
-    // check the cache first
-    const cachedMessages = cacheGet(cacheKey);
-    if (cachedMessages) {
-      return res.json(cachedMessages);
-    }
 
     const currUser = await User.findById(myId);
     const otherUser = await User.findById(selectedUserId);
@@ -103,9 +96,8 @@ export const getMessages = async (req, res) => {
       { $set: { seen: true } }
     );
 
-    // store in cache
     const response = { success: true, messages }
-    cacheSet(cacheKey,response,900);
+  
 
     res.json(response);
   } catch (error) {
@@ -119,14 +111,8 @@ export const getMessages = async (req, res) => {
 export const markMessageAsSeen = async (req, res) => {
   try {
     const { id } = req.params;
-    await Message.findByIdAndUpdate(id, { seen: true });
-    // Invalidate related caches: message threads and sidebars
-    const msg = await Message.findById(id);
+    const msg = await Message.findByIdAndUpdate(id,{seen:true})
     if (msg) {
-      const a = `${msg.senderId}:${msg.receiverId}`;
-      const b = `${msg.receiverId}:${msg.senderId}`;
-      cacheDel(`messages:${a}`);
-      cacheDel(`messages:${b}`);
       cacheDelPattern(`users:sidebar:${msg.receiverId}`);
       cacheDelPattern(`users:sidebar:${msg.senderId}`);
     }
@@ -174,9 +160,7 @@ export const sendMessage = async (req, res) => {
       canBeSeen: !isBlocked,  // Set to false if receiver blocked sender
     });
 
-    // invalidate caches for both participants
-    cacheDel(`messages:${senderId}:${receiverId}`);
-    cacheDel(`messages:${receiverId}:${senderId}`);
+    // Invalidate sidebar cache so unseen counts update immediately
     cacheDelPattern(`users:sidebar:${receiverId}`);
     cacheDelPattern(`users:sidebar:${senderId}`);
 
