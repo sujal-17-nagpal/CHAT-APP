@@ -1,31 +1,62 @@
-import NodeCache from "node-cache";
+class Node{
+    constructor(key,value){
+        this.key = key;
+        this.value = value;
+        this.prev = null;
+        this.next = null;
+    }
+}
 
-const cache = new NodeCache({ stdTTL: 600, checkperiod: 120 });
+class LRUcache{
+    constructor(capacity = 10000){
+        this.capacity = capacity
+        this.mp = new Map();
+        this.head = new Node(null,null);
+        this.tail = new Node(null,null);
+        this.head.next = this.tail;
+        this.tail.prev = this.head;
+    }
 
-// operations
-export const cacheGet = (key) => {
-    return cache.get(key);
-};
+    insert_at_head(node){
+        this.head.next.prev = node;
+        node.next = this.head.next;
+        node.prev = this.head;
+        this.head.next = node;
+    }
 
-export const cacheSet = (key, value, ttl = 600) => {
-    cache.set(key, value, ttl);
-};
+    delete(node){
+        node.prev.next = node.next;
+        node.next.prev = node.prev;
+        this.mp.get(node.key);
+    }
 
-export const cacheDel = (key) => {
-    cache.del(key);
-};
-
-export const cacheFlush = () => {
-    cache.flushAll();
-};
-
-export const cacheDelPattern = (pattern) => {
-    const keys = cache.keys();
-    keys.forEach((key) => {
-        if (key.includes(pattern)) {
-            cache.del(key);
+    add(key,value){
+        if(this.mp.has(key)) return;
+        if(this.mp.size >=this.capacity){
+            this.mp.delete(this.tail.prev.key)
+            this.delete(this.tail.prev)
         }
-    });
-};
+        const newNode = new Node(key,value);
+        this.mp.set(key,newNode);
+        this.insert_at_head(newNode)
+    }
 
-export default cache;
+    get(key){
+            if (!this.mp.has(key)) return null;
+            const existingNode = this.mp.get(key);
+            this.delete(existingNode);
+            this.insert_at_head(existingNode);
+           return existingNode.value;
+    }
+
+    delPattern(pattern){
+        for(const key of this.mp.keys()){
+            if(key.includes(pattern)){
+                this.delete(this.mp.get(key));
+                this.mp.delete(key);
+            }
+        }
+    }
+}
+
+export default LRUcache

@@ -5,6 +5,8 @@ import User from "./models/User.js";
 import { connectDb } from "./lib/db.js";
 const bloom  = new bloomFilter(100000)
 
+const app = express()
+
 const warmUp = async()=>{
     try{
         const users = await User.find({},"email").lean()
@@ -17,7 +19,7 @@ const warmUp = async()=>{
     }
 }
 
-const app = express()
+
 
 app.use(express.json())
 const port = process.env.CENTRAL_PORT
