@@ -23,7 +23,6 @@ export const getUsersForSidebar = async (req, res) => {
       return res.json(cachedData);
     }
 
-    
     // Simple query to get all users except yourself (no blocking filter)
     const filteredusers = await User.find({ 
       _id: { $ne: userId } 
