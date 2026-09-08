@@ -22,7 +22,7 @@ export const getUsersForSidebar = async (req, res) => {
       const apiresponse = await axios.get(`${baseUrl}/getCache/${encodeURIComponent(cacheKey)}`)
 
     if(apiresponse.status === 200 && apiresponse.data.data){
-      console.log("cachee hittt")
+      // console.log("cachee hittt")
       return res.json(apiresponse.data.data)
     }
     } catch (error) {

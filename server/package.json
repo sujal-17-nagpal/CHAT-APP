@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
+    "start:all": "concurrently -n \"CENTRAL,SERVER1,SERVER2,LB\" -c \"blue,green,magenta,yellow\" \"node centralServer.js\" \"cross-env PORT=5000 node server.js\" \"cross-env PORT=5001 node server.js\" \"node loadBalancer.js\"",
     "dev": "nodemon server.js",
     "server": "nodemon server.js",
     "start": "node server.js"
@@ -24,5 +25,9 @@
     "node-cache": "^5.1.2",
     "nodemon": "^3.1.14",
     "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5",
+    "cross-env": "^10.1.0"
   }
 }
