@@ -57,6 +57,13 @@ class LRUcache{
             }
         }
     }
+    deleteKey(key){
+        if(this.mp.has(key)){
+            const node = this.mp.get(key)
+            this.mp.delete(key)
+            this.delete(node)
+        }
+    }
 }
 
 export default LRUcache

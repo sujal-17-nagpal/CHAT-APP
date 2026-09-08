@@ -5,9 +5,7 @@ import cloudinary from "../lib/cloudinary.js";
 import { userSocketMap } from "../server.js";
 import axios from "axios"
 // bloom filter for last looks of users
-import bloomFilter from "../lib/bloomFilter.js";
 import tokenBlackListModel from "../models/tokenBlacklist.js";
-const bloom = new bloomFilter(20000);
 
 const baseUrl = 'http://localhost:7000'
 
@@ -21,16 +19,18 @@ export const signup = async (req, res) => {
     }
 
     // check using bloom filter if the user exists
-    const flag = bloom.exists(email);
-    if (flag) {
-      // user can exist or not exist (happens due to false positivity )
+    const apiresponse = await axios.post(`${baseUrl}/check`,{
+      email : email
+    })
+    if(apiresponse.data.present){
       const existingUser = await User.findOne({ email });
       if (existingUser) {
         return res
           .status(400)
           .json({ message: "user with this email already exist" });
       }
-    } 
+    }
+
 
     // if(password.length < 6){
     //   return res.status(400).json({message : "password length must be at least 6 charcters"})
@@ -46,7 +46,13 @@ export const signup = async (req, res) => {
       bio,
     });
     const token = genToken(newUser._id);
-    bloom.add(email)
+    try {
+      await axios.post(`${baseUrl}/addEmail`,{
+        email:email
+      })
+    } catch (error) {
+      console.log("some error occured while adding email to bloom on signup")
+    }
     return res.json({
       success: true,
       userData: newUser,
@@ -69,8 +75,10 @@ export const login = async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({ message: "all fields are required" });
     }
-    const flag = bloom.exists(email);
-    if(!flag){
+    const apiresponse = await axios.post(`${baseUrl}/check`,{
+      email : email
+    })
+    if(!apiresponse.data.present){
       return res.status(404).json({message : "no user exists with this email"})
     }
     const existingUser = await User.findOne({ email });
@@ -172,14 +180,14 @@ export const blockUser = async (req, res) => {
 
     // invalidate caches for both users
     try {
-      await axios.post(`${baseUrl}/delCachePattern`,{
-        pattern:`users:sidebar:${userId}`
-      })
-      await axios.post(`${baseUrl}/delCachePattern`,{
-        pattern:`users:sidebar:${userTobeBlockedId}`
-      })
+      await axios.post(`${baseUrl}/deleteCacheKey`, {
+        key: `users:sidebar:${userId}`,
+      });
+      await axios.post(`${baseUrl}/deleteCacheKey`, {
+        key: `users:sidebar:${userTobeBlockedId}`,
+      });
     } catch (error) {
-      console.log("some error occured while invalating cache")
+      console.log("some error occured while invalating cache");
     }
 
     res
@@ -217,14 +225,14 @@ export const unblockUser = async (req, res) => {
 
     // invalidate caches for both users
     try {
-      await axios.post(`${baseUrl}/delCachePattern`,{
-        pattern:`users:sidebar:${userId}`
-      })
-      await axios.post(`${baseUrl}/delCachePattern`,{
-        pattern:`users:sidebar:${userToBeUnblockedId}`
-      })
+      await axios.post(`${baseUrl}/deleteCacheKey`, {
+        key: `users:sidebar:${userId}`,
+      });
+      await axios.post(`${baseUrl}/deleteCacheKey`, {
+        key: `users:sidebar:${userToBeUnblockedId}`,
+      });
     } catch (error) {
-      console.log("some error occured while invalating cache")
+      console.log("some error occured while invalating cache");
     }
  
 
@@ -289,6 +297,18 @@ export const logout = async (req, res) => {
 
   try {
     await tokenBlackListModel.create({ token });
+    const cacheKey = `blacklist:${token}`
+    try {
+      await axios.post(`${baseUrl}/addCache`,{
+        key : cacheKey,
+        value:true
+      })
+      await axios.post(`${baseUrl}/deleteCacheKey`,{
+        key : `verified:${token}`
+      })
+    } catch (error) {
+      console.log("error while inserting blacklisted token in cache on logout")
+    }
     return res.status(200).json({ message: "logged out" });
   } catch (error) {
     return res.status(500).json({ message: error.message });

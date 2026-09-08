@@ -22,6 +22,7 @@ export const getUsersForSidebar = async (req, res) => {
       const apiresponse = await axios.get(`${baseUrl}/getCache/${encodeURIComponent(cacheKey)}`)
 
     if(apiresponse.status === 200 && apiresponse.data.data){
+      console.log("cachee hittt")
       return res.json(apiresponse.data.data)
     }
     } catch (error) {
@@ -129,8 +130,8 @@ export const markMessageAsSeen = async (req, res) => {
     const msg = await Message.findByIdAndUpdate(id,{seen:true})
     if (msg) {
       try {
-        await axios.post(`${baseUrl}/delCachePattern`, { pattern: `users:sidebar:${msg.receiverId}` });
-        await axios.post(`${baseUrl}/delCachePattern`, { pattern: `users:sidebar:${msg.senderId}` });
+        await axios.post(`${baseUrl}/deleteCacheKey`, { key: `users:sidebar:${msg.receiverId}` });
+        await axios.post(`${baseUrl}/deleteCacheKey`, { key: `users:sidebar:${msg.senderId}` });
       } catch (error) {
         console.log("error occured while invalidating cache")
       }
@@ -186,8 +187,8 @@ export const sendMessage = async (req, res) => {
 
     // Invalidate sidebar cache so unseen counts update immediately
     try {
-      await axios.post(`${baseUrl}/delCachePattern`, { pattern: `users:sidebar:${receiverId}` });
-      await axios.post(`${baseUrl}/delCachePattern`, { pattern: `users:sidebar:${senderId}` });
+      await axios.post(`${baseUrl}/deleteCacheKey`, { key: `users:sidebar:${receiverId}` });
+      await axios.post(`${baseUrl}/deleteCacheKey`, { key: `users:sidebar:${senderId}` });
     } catch (error) {
       console.log("Failed to clear sidebar cache:", error.message);
     }

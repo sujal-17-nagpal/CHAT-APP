@@ -89,6 +89,19 @@ app.post('/delCachePattern',(req,res)=>{
     }
 })
 
+app.post('/deleteCacheKey',(req,res)=>{
+    try {
+        const {key} = req.body;
+        if(!key){
+            return res.status(404).json({message:"key is required"})
+        }
+        cache.deleteKey(key)
+        return res.status(200).json({message:"key deleted successfully from cache"})
+    } catch (error) {
+        return res.status(400).json({message:error.message})
+    }
+})
+
 await connectDb()
 await warmUp()
 app.listen(port,()=>{
