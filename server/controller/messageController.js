@@ -4,8 +4,8 @@ import cloudinary from "../lib/cloudinary.js";
 import { io, userSocketMap } from "../server.js";
 import Trie from "../lib/Trie.js";
 import { abusiveWords } from "../lib/abusiveWords.js";
-import { cacheGet, cacheSet, cacheDel, cacheDelPattern } from "../lib/cache.js";
-
+import axios from 'axios';
+const baseUrl = 'http://localhost:7000'
 
 // Initialize Trie with abusive words
 const trie = new Trie();
@@ -18,10 +18,18 @@ export const getUsersForSidebar = async (req, res) => {
     const cacheKey = `users:sidebar:${userId}`;
 
     // checking if data is in cache
-    const cachedData = cacheGet(cacheKey);
-    if(cachedData){
-      return res.json(cachedData);
+    try {
+      const apiresponse = await axios.get(`${baseUrl}/getCache/${encodeURIComponent(cacheKey)}`)
+
+    if(apiresponse.status === 200 && apiresponse.data.data){
+      return res.json(apiresponse.data.data)
     }
+    } catch (error) {
+         if(error.response?.status !== 404){
+          console.log("There is some issue with central cache")
+         }
+    }
+   
 
     // Simple query to get all users except yourself (no blocking filter)
     const filteredusers = await User.find({ 
@@ -46,7 +54,15 @@ export const getUsersForSidebar = async (req, res) => {
     const response = { success: true, users: filteredusers, unseenMessages };
 
     // store data in cache
-    cacheSet(cacheKey,response,300)
+    try {
+      const insertInCache =await axios.post(`${baseUrl}/addCache`,{
+      key : cacheKey,
+      value:response
+    })
+    } catch (error) {
+      console.log("some error occured while inserting data into cache")
+    }
+    
     res.json(response);
   } catch (error) {
     console.log(error.message);
@@ -112,8 +128,13 @@ export const markMessageAsSeen = async (req, res) => {
     const { id } = req.params;
     const msg = await Message.findByIdAndUpdate(id,{seen:true})
     if (msg) {
-      cacheDelPattern(`users:sidebar:${msg.receiverId}`);
-      cacheDelPattern(`users:sidebar:${msg.senderId}`);
+      try {
+        await axios.post(`${baseUrl}/delCachePattern`, { pattern: `users:sidebar:${msg.receiverId}` });
+        await axios.post(`${baseUrl}/delCachePattern`, { pattern: `users:sidebar:${msg.senderId}` });
+      } catch (error) {
+        console.log("error occured while invalidating cache")
+      }
+      
     }
     res.json({ success: true });
   } catch (error) {
@@ -129,6 +150,10 @@ export const sendMessage = async (req, res) => {
     let { text, image } = body;
     const receiverId = req.params.id;
     const senderId = req.user._id;
+
+    if ((!text || text.trim() === "") && !image) {
+      return res.status(400).json({ success: false, message: "Message text or image is required" });
+    }
 
     const currUser = await User.findById(senderId);
     const otherUser = await User.findById(receiverId);
@@ -160,8 +185,12 @@ export const sendMessage = async (req, res) => {
     });
 
     // Invalidate sidebar cache so unseen counts update immediately
-    cacheDelPattern(`users:sidebar:${receiverId}`);
-    cacheDelPattern(`users:sidebar:${senderId}`);
+    try {
+      await axios.post(`${baseUrl}/delCachePattern`, { pattern: `users:sidebar:${receiverId}` });
+      await axios.post(`${baseUrl}/delCachePattern`, { pattern: `users:sidebar:${senderId}` });
+    } catch (error) {
+      console.log("Failed to clear sidebar cache:", error.message);
+    }
 
     // Only emit to receiver if not blocked
     if (!isBlocked) {
