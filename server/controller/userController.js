@@ -2,13 +2,14 @@ import { genToken } from "../lib/utils.js";
 import User from "../models/User.js";
 import bcrypt from "bcrypt";
 import cloudinary from "../lib/cloudinary.js";
-import { cacheGet, cacheSet, cacheDel, cacheDelPattern } from "../lib/cache.js";
 import { userSocketMap } from "../server.js";
-
+import axios from "axios"
 // bloom filter for last looks of users
 import bloomFilter from "../lib/bloomFilter.js";
 import tokenBlackListModel from "../models/tokenBlacklist.js";
 const bloom = new bloomFilter(20000);
+
+const baseUrl = 'http://localhost:7000'
 
 // sign up new user
 export const signup = async (req, res) => {
@@ -131,7 +132,13 @@ export const updateProfile = async (req, res) => {
 
     // After successful update, add:
     
-    cacheDelPattern(`users:sidebar:`);
+    try {
+      await axios.post(`${baseUrl}/delCachePattern`,{
+        pattern:`users:sidebar:`
+      })
+    } catch (error) {
+      console.log("some error occured while invalating cache")
+    }
 
     res.status(200).json({ success: true, user: updatedUser });
   } catch (error) {
@@ -164,8 +171,16 @@ export const blockUser = async (req, res) => {
     });
 
     // invalidate caches for both users
-    cacheDelPattern(`users:sidebar:${userId}`);
-    cacheDelPattern(`users:sidebar:${userTobeBlockedId}`);
+    try {
+      await axios.post(`${baseUrl}/delCachePattern`,{
+        pattern:`users:sidebar:${userId}`
+      })
+      await axios.post(`${baseUrl}/delCachePattern`,{
+        pattern:`users:sidebar:${userTobeBlockedId}`
+      })
+    } catch (error) {
+      console.log("some error occured while invalating cache")
+    }
 
     res
       .status(200)
@@ -201,8 +216,16 @@ export const unblockUser = async (req, res) => {
     });
 
     // invalidate caches for both users
-    cacheDelPattern(`users:sidebar:${userId}`);
-    cacheDelPattern(`users:sidebar:${userToBeUnblockedId}`);
+    try {
+      await axios.post(`${baseUrl}/delCachePattern`,{
+        pattern:`users:sidebar:${userId}`
+      })
+      await axios.post(`${baseUrl}/delCachePattern`,{
+        pattern:`users:sidebar:${userToBeUnblockedId}`
+      })
+    } catch (error) {
+      console.log("some error occured while invalating cache")
+    }
  
 
     res.status(200).json({ success: true, message: "user unblocked" });
