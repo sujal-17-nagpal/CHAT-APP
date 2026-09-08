@@ -3,9 +3,7 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "start:all": "concurrently -n \"CENTRAL,SERVER1,SERVER2,LB\" -c \"blue,green,magenta,yellow\" \"node centralServer.js\" \"cross-env PORT=5000 node server.js\" \"cross-env PORT=5001 node server.js\" \"node loadBalancer.js\"",
-    "dev": "nodemon server.js",
-    "server": "nodemon server.js",
+    "dev": "concurrently -n \"CENTRAL,SERVER1,SERVER2,LB\" -c \"blue,green,magenta,yellow\" \"node centralServer.js\" \"cross-env PORT=5000 node server.js\" \"cross-env PORT=5001 node server.js\" \"node loadBalancer.js\"",
     "start": "node server.js"
   },
   "type": "module",
